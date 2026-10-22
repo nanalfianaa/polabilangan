@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Pola Bilangan - Kelas SD</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Google - Poppins/Fredoka for playful kids feel -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', 'Quicksand', sans-serif;
+            user-select: none;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+        }
+        
+        #webgl-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        .pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Glassmorphism custom UI */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            border: 4px solid #3B82F6;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15), inset 0 -5px 0 rgba(0,0,0,0.1);
+        }
+
+        .heart-break {
+            animation: heartBreak 0.6s forwards ease-out;
+        }
+
+        @keyframes heartBreak {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4) rotate(15deg); opacity: 0.8; }
+            100% { transform: scale(0) translateY(30px); opacity: 0; }
+        }
+
+        /* Floating feedback text */
+        .feedback-text {
+            animation: floatUp 1.2s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translateY(20px) scale(0.7); }
+            30% { opacity: 1; transform: translateY(-10px) scale(1.1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1); }
+        }
+    </style>
+
+    <!-- Import Three.js as ES module -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+</head>
+<body class="h-screen w-screen relative overflow-hidden flex flex-col justify-between text-slate-800">
+
+    <!-- Canvas Three.js Background -->
+    <canvas id="webgl-bg"></canvas>
+
+    <!-- Header Overlay -->
+    <header class="relative z-10 w-full p-4 flex justify-between items-center max-w-5xl mx-auto">
+        <!-- Brand / Title -->
+        <div class="flex items-center space-x-2 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border-2 border-blue-400 shadow-md">
+            <span class="text-2xl">🧩</span>
+            <h1 class="text-lg md:text-xl font-bold text-blue-600 tracking-wide">Pola Bilangan SD</h1>
+        </div>
+
+        <!-- Mute/Sound Toggle -->
+        <div class="flex items-center space-x-2">
+            <button id="btn-sound" onclick="toggleAudio()" class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-4 py-2 rounded-full shadow-lg border-2 border-yellow-200 transition transform active:scale-95 flex items-center gap-2">
+                <span id="sound-icon">🔊</span>
+                <span id="sound-text" class="hidden sm:inline text-sm">Suara: ON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN UI CONTAINER -->
+    <main class="relative z-10 flex-1 flex items-center justify-center p-4">
+
+        <!-- 1. START SCREEN -->
+        <div id="screen-start" class="glass-card max-w-lg w-full p-8 rounded-3xl text-center pop-in">
+            <div class="w-24 h-24 mx-auto bg-gradient-to-tr from-yellow-300 to-orange-400 rounded-2xl flex items-center justify-center text-5xl shadow-lg mb-4 border-4 border-white transform rotate-3">
+                🔢
+            </div>
+            <h2 class="text-3xl font-extrabold text-blue-600 mb-2">Petualangan Pola Bilangan</h2>
+            <p class="text-slate-600 mb-6 font-medium">Bantu Pupi Si Kelinci menemukan angka-angka yang hilang dalam matematika!</p>
+            
+            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-200 mb-6 text-left text-sm text-slate-700 space-y-2">
+                <div class="flex items-center gap-2 font-bold text-blue-700">
+                    <span>💡 Cara Bermain:</span>
+                </div>
+                <p>• Selesaikan 20 level tantangan pola angka.</p>
+                <p>• Isi kotak kosong <b>[ ? ]</b> dengan jawaban yang benar.</p>
+                <p>• Kamu memiliki <b>5 Nyawa ❤️</b> dan <b>60 Detik ⏱️</b> per soal.</p>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white font-extrabold text-xl py-4 rounded-2xl shadow-lg border-b-4 border-green-700 transition transform hover:-translate-y-1 active:translate-y-0">
+                🚀 MULAI PETUALANGAN
+            </button>
+        </div>
+
+        <!-- 2. GAMEPLAY SCREEN -->
+        <div id="screen-game" class="hidden max-w-2xl w-full flex flex-col gap-4">
+            <!-- Stats Bar -->
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg border-2 border-sky-300 flex justify-between items-center">
+                <!-- Lives -->
+                <div class="flex items-center gap-1 text-2xl" id="lives-container">
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                    <span class="heart">❤️</span>
+                </div>
+
+                <!-- Timer -->
+                <div class="flex items-center gap-2 bg-amber-100 border border-amber-300 px-3 py-1 rounded-full text-amber-800 font-bold text-sm">
+                    <span>⏱️</span>
+                    <span id="timer-text">60s</span>
+                </div>
+
+                <!-- Score & Level -->
+                <div class="text-right">
+                    <div class="text-xs text-slate-500 font-bold uppercase tracking-wider">Soal</div>
+                    <div class="text-lg font-extrabold text-blue-600"><span id="current-question-num">1</span> / 20</div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-white/60 h-3 rounded-full overflow-hidden p-0.5 border border-white/80">
+                <div id="progress-bar" class="bg-gradient-to-r from-sky-400 to-emerald-400 h-full rounded-full transition-all duration-300 w-0"></div>
+            </div>
+
+            <!-- Question Box Container -->
+            <div id="question-card" class="glass-card p-6 md:p-8 rounded-3xl text-center relative overflow-hidden">
+                
+                <div class="inline-block bg-sky-100 text-sky-700 text-xs font-extrabold px-3 py-1 rounded-full mb-3 uppercase tracking-wider" id="pattern-type-badge">
+                    Pola Tambah/Kurang
+                </div>
+
+                <!-- Animated Feedback Overlay -->
+                <div id="feedback-overlay" class="absolute inset-0 pointer-events-none flex items-center justify-center z-20 hidden">
+                    <span id="feedback-text-el" class="text-4xl md:text-5xl font-black feedback-text drop-shadow-md">
+                        HEBAT! BENAR! 🌟
+                    </span>
+                </div>
+
+                <h3 class="text-base md:text-lg font-medium text-slate-600 mb-6" id="question-instruction">
+                    Lengkapilah deret angka berikut!
+                </h3>
+
+                <!-- Pattern Sequence Display -->
+                <div id="pattern-container" class="flex flex-wrap items-center justify-center gap-2 md:gap-4 mb-8">
+                    <!-- Boxes rendered by JS -->
+                </div>
+
+                <!-- Input & Action -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-xs mx-auto">
+                    <input type="number" id="user-answer" placeholder="?" class="w-full sm:w-32 text-center text-2xl font-bold py-3 px-4 rounded-2xl border-2 border-sky-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-sky-200 bg-white shadow-inner" transition autocomplete="off">
+                    
+                    <button onclick="checkAnswer()" class="w-full sm:w-auto flex-1 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-extrabold text-lg py-3 px-6 rounded-2xl shadow-md border-b-4 border-yellow-600 transition transform hover:-translate-y-0.5 active:translate-y-0">
+                        CEK
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. GAME OVER SCREEN -->
+        <div id="screen-gameover" class="hidden glass-card max-w-md w-full p-8 rounded-3xl text-center pop-in">
+            <div class="text-6xl mb-4">💔</div>
+            <h2 class="text-3xl font-extrabold text-red-500 mb-2">Yah, Nyawa Habis!</h2>
+            <p class="text-slate-600 mb-6 font-medium">Jangan menyerah! Belajar pola bilangan memang butuh latihan. Yuk coba lagi!</p>
+
+            <div class="bg-red-50 p-4 rounded-2xl border border-red-200 mb-6">
+                <span class="text-sm text-slate-500 block">Skor Akhir Kamu</span>
+                <span id="gameover-score" class="text-4xl font-extrabold text-red-600">0</span>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-lg border-b-4 border-blue-700 transition transform hover:-translate-y-1">
+                🔄 MAIN LAGI
+            </button>
+        </div>
+
+        <!-- 4. VICTORY SCREEN -->
+        <div id="screen-victory" class="hidden glass-card max-w-md w-full p-8 rounded-3xl text-center pop-in">
+            <div class="text-6xl mb-2 animate-bounce">🏆</div>
+            <h2 class="text-3xl font-extrabold text-emerald-600 mb-1">LUAR BIASA!</h2>
+            <p class="text-slate-600 mb-4 font-medium">Kamu berhasil menyelesaikan semua petualangan!</p>
+
+            <!-- Stars Rating -->
+            <div class="flex justify-center gap-2 text-4xl mb-4" id="victory-stars">
+                <span>⭐</span><span>⭐</span><span>⭐</span>
+            </div>
+
+            <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 mb-6">
+                <span class="text-sm text-slate-500 block">Total Skor Kamu</span>
+                <span id="victory-score" class="text-4xl font-extrabold text-emerald-600">1000</span>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-lg border-b-4 border-green-700 transition transform hover:-translate-y-1">
+                🎮 MAIN LAGI
+            </button>
+        </div>
+
+    </main>
+
+    <!-- FOOTER WAJIB -->
+    <footer class="relative z-10 w-full text-center py-2 bg-white/60 backdrop-blur-md border-t border-white/40 text-xs text-slate-700 font-semibold tracking-wide">
+        © 2026 by Nana Alfiana, S.Pd.,Gr
+    </footer>
+
+
+    <!-- GAME LOGIC & THREE.JS LOGIC -->
+    <script type="module">
+        import * as THREE from 'three';
+
+        // -------------------------------------------------------------
+        // 1. THREE.JS 3D BACKGROUND SYSTEM
+        // -------------------------------------------------------------
+        let scene, camera, renderer;
+        let floatingCubes = [];
+        let islandGroup;
+        let isSpeedUp3D = false;
+
+        function initThreeJS() {
+            const canvas = document.getElementById('webgl-bg');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue
+            scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 22);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Floating Numbers/Cubes
+            const colors = [0xFFD166, 0x06D6A0, 0x118AB2, 0xFFD166, 0xEF476F];
+            const cubeGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+
+            for (let i = 0; i < 25; i++) {
+                const mat = new THREE.MeshStandardMaterial({
+                    color: colors[i % colors.length],
+                    roughness: 0.3,
+                    metalness: 0.1
+                });
+                const cube = new THREE.Mesh(cubeGeo, mat);
+                
+                cube.position.x = (Math.random() - 0.5) * 40;
+                cube.position.y = (Math.random() - 0.5) * 20;
+                cube.position.z = (Math.random() - 0.5) * 30 - 5;
+
+                cube.rotation.x = Math.random() * Math.PI;
+                cube.rotation.y = Math.random() * Math.PI;
+
+                cube.userData = {
+                    rotSpeedX: (Math.random() - 0.5) * 0.02,
+                    rotSpeedY: (Math.random() - 0.5) * 0.02,
+                    floatSpeed: 0.005 + Math.random() * 0.01,
+                    initialY: cube.position.y
+                };
+
+                floatingCubes.push(cube);
+                scene.add(cube);
+            }
+
+            // Central Floating Island
+            islandGroup = new THREE.Group();
+            
+            // Island Top (Grass)
+            const islandGeo = new THREE.CylinderGeometry(6, 4, 2, 8);
+            const islandMat = new THREE.MeshStandardMaterial({ color: 0x70e000, roughness: 0.8 });
+            const island = new THREE.Mesh(islandGeo, islandMat);
+            islandGroup.add(island);
+
+            // Island Dirt Base
+            const dirtGeo = new THREE.CylinderGeometry(4, 1, 3, 8);
+            const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 });
+            const dirt = new THREE.Mesh(dirtGeo, dirtMat);
+            dirt.position.y = -2.5;
+            islandGroup.add(dirt);
+
+            islandGroup.position.set(0, -6, -5);
+            scene.add(islandGroup);
+
+            // Responsive Resize
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001;
+
+            // Rotate Floating Cubes
+            floatingCubes.forEach(cube => {
+                const mult = isSpeedUp3D ? 8 : 1;
+                cube.rotation.x += cube.userData.rotSpeedX * mult;
+                cube.rotation.y += cube.userData.rotSpeedY * mult;
+                cube.position.y = cube.userData.initialY + Math.sin(time + cube.position.x) * 0.8;
+            });
+
+            // Gently Bob & Rotate Island
+            if (islandGroup) {
+                islandGroup.position.y = -6 + Math.sin(time * 0.8) * 0.5;
+                islandGroup.rotation.y += 0.003;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Trigger fast spin on correct answer
+        window.trigger3DEffect = function() {
+            isSpeedUp3D = true;
+            setTimeout(() => { isSpeedUp3D = false; }, 1200);
+        };
+
+        window.addEventListener('DOMContentLoaded', initThreeJS);
+    </script>
+
+    <script>
+        // -------------------------------------------------------------
+        // 2. WEB AUDIO API SYNTHESIZER (SOUND & BGM)
+        // -------------------------------------------------------------
+        let audioCtx = null;
+        let isMuted = false;
+        let bgmInterval = null;
+        let bgmNoteIndex = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleAudio() {
+            isMuted = !isMuted;
+            const soundIcon = document.getElementById('sound-icon');
+            const soundText = document.getElementById('sound-text');
+            
+            if (isMuted) {
+                soundIcon.textContent = '🔇';
+                soundText.textContent = 'Suara: OFF';
+                stopBGM();
+            } else {
+                soundIcon.textContent = '🔊';
+                soundText.textContent = 'Suara: ON';
+                initAudio();
+                startBGM();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            initAudio();
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'correct') {
+                // Happy ascending chime (523Hz -> 1046Hz)
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.5); // C6
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.5);
+
+            } else if (type === 'wrong') {
+                // Low buzzer (200Hz -> 100Hz)
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.6);
+
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+
+        // Soft Kid-friendly Synth BGM Sequencer
+        const bgmNotes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63]; // C4, E4, G4, C5, G4, E4
+        function startBGM() {
+            if (bgmInterval || isMuted) return;
+            bgmNoteIndex = 0;
+            bgmInterval = setInterval(() => {
+                if (isMuted || !audioCtx) return;
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(bgmNotes[bgmNoteIndex], now);
+
+                gain.gain.setValueAtTime(0.03, now); // Very soft background volume
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.4);
+
+                bgmNoteIndex = (bgmNoteIndex + 1) % bgmNotes.length;
+            }, 600);
+        }
+
+        function stopBGM() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+
+        // -------------------------------------------------------------
+        // 3. QUESTIONS DATA (20 LEVELS - GRADUAL DIFFICULTY)
+        // -------------------------------------------------------------
+        const questions = [
+            // No 1-5: Pola Tambah/Kurang Sederhana
+            { seq: [2, 4, 6, "?", 10], ans: 8, badge: "Pola Tambah", hint: "Tambah 2 setiap langkah" },
+            { seq: [5, 10, 15, 20, "?"], ans: 25, badge: "Pola Tambah", hint: "Tambah 5 setiap langkah" },
+            { seq: [20, 18, 16, "?", 12], ans: 14, badge: "Pola Kurang", hint: "Berkurang 2" },
+            { seq: [3, 7, 11, "?", 19], ans: 15, badge: "Pola Tambah", hint: "Tambah 4" },
+            { seq: [30, 25, "?", 15, 10], ans: 20, badge: "Pola Kurang", hint: "Berkurang 5" },
+
+            // No 6-10: Pola Loncat 2/3 / Variasi
+            { seq: [1, 4, 7, 10, "?"], ans: 13, badge: "Pola Loncat 3", hint: "Loncat 3 angka" },
+            { seq: [10, 13, 16, "?", 22], ans: 19, badge: "Pola Loncat 3", hint: "Tambah 3" },
+            { seq: [2, 8, 14, "?", 26], ans: 20, badge: "Pola Loncat 6", hint: "Loncat 6" },
+            { seq: [50, 42, 34, "?", 18], ans: 26, badge: "Pola Kurang 8", hint: "Kurang 8" },
+            { seq: [100, 90, 80, "?", 60], ans: 70, badge: "Pola Loncat 10", hint: "Berkurang 10" },
+
+            // No 11-15: Pola Perkalian
+            { seq: [1, 2, 4, 8, "?"], ans: 16, badge: "Pola Perkalian x2", hint: "Dikali 2 setiap langkah" },
+            { seq: [2, 6, 18, "?"], ans: 54, badge: "Pola Perkalian x3", hint: "Dikali 3" },
+            { seq: [5, 10, 20, "?", 80], ans: 40, badge: "Pola Perkalian x2", hint: "Dikali 2" },
+            { seq: [1, 3, 9, 27, "?"], ans: 81, badge: "Pola Perkalian x3", hint: "Dikali 3" },
+            { seq: [3, 6, 12, 24, "?"], ans: 48, badge: "Pola Perkalian x2", hint: "Dikali 2" },
+
+            // No 16-20: Pola Gabungan & Bertingkat
+            { seq: [2, 3, 5, 8, 12, "?"], ans: 17, badge: "Pola Bertingkat (+1,+2,+3...)", hint: "Penambahnya bertambah 1 (+1, +2, +3, +4, +5)" },
+            { seq: [1, 2, 4, 7, 11, "?"], ans: 16, badge: "Pola Bertingkat", hint: "Perhatikan selisih antar angka (+1, +2, +3, +4, +5)" },
+            { seq: [50, 48, 44, 38, "?"], ans: 30, badge: "Pola Kurang Bertingkat", hint: "Berkurang (-2, -4, -6, -8)" },
+            { seq: [2, 4, 8, 14, 22, "?"], ans: 32, badge: "Pola Gabungan", hint: "Penambahan genap (+2, +4, +6, +8, +10)" },
+            { seq: [3, 5, 9, 17, "?"], ans: 33, badge: "Pola Super Tantangan", hint: "Perkalian 2 lalu dikurang 1 (atau +2, +4, +8, +16)" }
+        ];
+
+
+        // -------------------------------------------------------------
+        // 4. GAME STATE & LOGIC
+        // -------------------------------------------------------------
+        let currentIdx = 0;
+        let score = 0;
+        let lives = 5;
+        let timer = 60;
+        let timerInterval = null;
+
+        function startGame() {
+            initAudio();
+            startBGM();
+
+            currentIdx = 0;
+            score = 0;
+            lives = 5;
+
+            showScreen('screen-game');
+            updateLivesUI();
+            loadQuestion();
+        }
+
+        function showScreen(screenId) {
+            ['screen-start', 'screen-game', 'screen-gameover', 'screen-victory'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function updateLivesUI() {
+            const container = document.getElementById('lives-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const heart = document.createElement('span');
+                heart.className = 'heart inline-block transition transform';
+                heart.textContent = i < lives ? '❤️' : '🖤';
+                if (i >= lives) heart.style.opacity = '0.4';
+                container.appendChild(heart);
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timer = 60;
+            document.getElementById('timer-text').textContent = timer + 's';
+
+            timerInterval = setInterval(() => {
+                timer--;
+                document.getElementById('timer-text').textContent = timer + 's';
+
+                if (timer <= 0) {
+                    clearInterval(timerInterval);
+                    handleWrongAnswer(true); // Timeout treats as wrong
+                }
+            }, 1000);
+        }
+
+        function loadQuestion() {
+            const q = questions[currentIdx];
+
+            // Update Progress & Badges
+            document.getElementById('current-question-num').textContent = currentIdx + 1;
+            document.getElementById('progress-bar').style.width = `${((currentIdx) / 20) * 100}%`;
+            document.getElementById('pattern-type-badge').textContent = q.badge;
+            document.getElementById('question-instruction').textContent = "Lengkapilah deret angka berikut!";
+
+            // Render Pattern Boxes
+            const container = document.getElementById('pattern-container');
+            container.innerHTML = '';
+
+            q.seq.forEach(item => {
+                const box = document.createElement('div');
+                if (item === '?') {
+                    box.className = 'w-14 h-14 md:w-16 md:h-16 bg-yellow-300 border-4 border-yellow-500 rounded-2xl flex items-center justify-center text-2xl font-black text-yellow-900 shadow-md animate-pulse';
+                    box.textContent = '?';
+                } else {
+                    box.className = 'w-14 h-14 md:w-16 md:h-16 bg-white border-2 border-sky-300 rounded-2xl flex items-center justify-center text-xl md:text-2xl font-bold text-slate-700 shadow-sm';
+                    box.textContent = item;
+                }
+                container.appendChild(box);
+            });
+
+            // Reset Input
+            const input = document.getElementById('user-answer');
+            input.value = '';
+            input.focus();
+
+            startTimer();
+        }
+
+        function checkAnswer() {
+            const input = document.getElementById('user-answer');
+            const val = parseInt(input.value);
+
+            if (isNaN(val)) return;
+
+            const q = questions[currentIdx];
+
+            if (val === q.ans) {
+                // CORRECT
+                clearInterval(timerInterval);
+                playSound('correct');
+                if (window.trigger3DEffect) window.trigger3DEffect();
+
+                // Score Calculation
+                score += 50 + (timer * 2);
+
+                // Confetti FX
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.7 }
+                });
+
+                showFeedback("HEBAT! BENAR! 🌟", "text-emerald-600");
+
+                setTimeout(() => {
+                    currentIdx++;
+                    if (currentIdx >= questions.length) {
+                        endGameVictory();
+                    } else {
+                        loadQuestion();
+                    }
+                }, 1500);
+
+            } else {
+                // WRONG
+                handleWrongAnswer(false);
+            }
+        }
+
+        function handleWrongAnswer(isTimeout) {
+            playSound('wrong');
+            lives--;
+            updateLivesUI();
+
+            // Card Shake
+            const card = document.getElementById('question-card');
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 500);
+
+            showFeedback(isTimeout ? "WAKTU HABIS! ⏱️" : "YUK COBA LAGI! ❌", "text-red-500");
+
+            if (lives <= 0) {
+                clearInterval(timerInterval);
+                setTimeout(() => {
+                    document.getElementById('gameover-score').textContent = score;
+                    showScreen('screen-gameover');
+                }, 1200);
+            }
+        }
+
+        function showFeedback(text, colorClass) {
+            const overlay = document.getElementById('feedback-overlay');
+            const textEl = document.getElementById('feedback-text-el');
+
+            textEl.textContent = text;
+            textEl.className = `text-3xl md:text-5xl font-black feedback-text drop-shadow-md ${colorClass}`;
+            
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 1200);
+        }
+
+        function endGameVictory() {
+            clearInterval(timerInterval);
+            document.getElementById('victory-score').textContent = score;
+
+            // Render Stars
+            const starsContainer = document.getElementById('victory-stars');
+            if (lives >= 4) starsContainer.innerHTML = '⭐ ⭐ ⭐';
+            else if (lives >= 2) starsContainer.innerHTML = '⭐ ⭐ ⚪';
+            else starsContainer.innerHTML = '⭐ ⚪ ⚪';
+
+            // Mega Confetti
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
+
+            showScreen('screen-victory');
+        }
+
+        // Allow 'Enter' key to check answer
+        document.getElementById('user-answer').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        // Make checkAnswer available globally
+        window.startGame = startGame;
+        window.checkAnswer = checkAnswer;
+        window.toggleAudio = toggleAudio;
+    </script>
+</body>
+</html>
